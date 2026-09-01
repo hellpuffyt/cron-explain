@@ -1,0 +1,103 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: test (node ${{ matrix.node-version }}, ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        node-version: ["20", "22", "24"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+
+      - name: install
+        run: npm ci
+
+      - name: test
+        run: npm test
+
+      - name: build and run the console script
+        run: npm run build && node bin/cron-explain.js "0 9 * * *" --count 1
+
+  quality:
+    name: types, lint and coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: install
+        run: npm ci
+
+      - name: tsc --noEmit (strict)
+        run: npm run typecheck
+
+      - name: eslint
+        run: npm run lint
+
+      - name: coverage
+        run: npm run coverage
+
+  dst-correctness:
+    name: DST fall-back double-fire, verified against the real built CLI
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: install and build
+        run: npm ci && npm run build
+
+      # US DST ends the first Sunday of November - 2026-11-01. 1:00-2:00 AM
+      # America/New_York local time happens twice that day. A schedule
+      # firing at 1:30 AM must find BOTH real instants, one hour apart -
+      # this is the tool's entire reason to exist, asserted exactly
+      # against the real, built, published CLI (not just unit tests).
+      - name: fall-back is matched twice, exactly one hour apart
+        run: |
+          set -euo pipefail
+          node bin/cron-explain.js "30 1 1 11 *" \
+            --timezone America/New_York --from 2026-10-31T00:00:00Z \
+            --count 2 --format json | node -e "
+          const data = JSON.parse(require('fs').readFileSync(0, 'utf-8'));
+          if (data.runs.length !== 2) throw new Error('expected 2 runs, got ' + data.runs.length);
+          const [a, b] = data.runs.map((r) => new Date(r).getTime());
+          if (b - a !== 60 * 60 * 1000) throw new Error('expected exactly one hour apart, got ' + (b - a) + 'ms');
+          if (a !== Date.parse('2026-11-01T05:30:00.000Z')) throw new Error('unexpected first instant: ' + data.runs[0]);
+          console.log('DST fall-back correctly produced two real runs, one hour apart');
+          "
+
+      - name: zero runtime dependencies
+        run: |
+          set -euo pipefail
+          rm -rf node_modules
+          node -e "const d = Object.keys(require('./package.json').dependencies || {}); if (d.length) { console.error('runtime dependencies declared:', d); process.exit(1); }"
+          node bin/cron-explain.js "0 9 * * *" --count 1
