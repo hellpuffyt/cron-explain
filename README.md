@@ -35,12 +35,35 @@ gets both DST edges right *by construction*, not by a special case:
   reading, so both are found and returned as two separate runs — matching
   what actually happens on the clock, not hiding the repeat.
 
+## Install
+
+This tool is **not published to npm**. The `cron-explain` package on the npm
+registry is an unrelated project by another author — do not `npm install`
+or `npx` that name expecting this tool. Install from a clone:
+
+```console
+git clone https://github.com/hellpuffyt/cron-explain
+cd cron-explain
+npm ci && npm run build
+npm link        # puts `cron-explain` on your PATH (or: node bin/cron-explain.js)
+```
+
+## How the DST claim is tested
+
+`test/reference.test.ts` compares `nextRuns` against an exhaustive reference
+that reads the wall clock at *every* UTC minute, for 11 expressions across 13
+spring-forward/fall-back windows (hour-aligned, midnight transitions in
+Santiago and Havana, Lord Howe's 30-minute DST, Chatham's :45 offset, the
+southern hemisphere, and a no-DST zone). The search skips ahead for speed and
+must never disagree with the exhaustive scan.
+
 ## Cron syntax supported
 
 Standard 5-field cron: minute, hour, day-of-month, month, day-of-week.
 `*`, literal values, ranges (`a-b`), steps (`*/n`, `a-b/n`, `n/step`), and
 comma-separated lists of any of those. Month and day-of-week accept
-3-letter names (`JAN`, `MON`, case-insensitive). The classic day-of-month
+3-letter names (`JAN`, `MON`, case-insensitive). Day-of-week `0` and `7`
+both mean Sunday, including as the end of a range (`1-7`, `MON-SUN`). The classic day-of-month
 **or** day-of-week union rule applies when both are restricted (neither
 is a bare `*`) — matching real cron(8) behaviour, not the "AND" a naive
 reading would suggest.
@@ -63,6 +86,12 @@ to now. Exit code is always `0` on a successful parse — a truncated result
 (the search horizon ran out before finding `--count` runs, which can
 happen for a genuinely rare or self-contradictory schedule like day 31 in
 February) is an honest fact about the expression, not a tool failure.
+
+## Security
+
+cron-explain parses one expression and formats dates; it reads no files and
+makes no network calls. Please report vulnerabilities privately as described
+in [SECURITY.md](SECURITY.md).
 
 ## Development
 

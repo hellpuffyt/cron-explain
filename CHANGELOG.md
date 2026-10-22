@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Next-run search skipped matches right after a spring-forward day: the
+  day-skip jumped a full 24h past a 23h local day, so e.g. `30 0 * * MON`
+  after a Sunday DST change (New York, London, Sydney) missed Monday 00:30 and
+  reported the following week. Jumps now stop short and re-read the clock;
+  `test/reference.test.ts` checks every result against an exhaustive scan.
+- `1-7` / `MON-SUN` were rejected as wrap-around ranges; 7 is Sunday.
+- `constructor`, `toString` etc. were accepted as month/day names.
+- The bin launcher is committed with its executable bit.
+- Dev dependencies updated with `npm audit fix`.
+
+### Documentation
+
+- README install section: not on npm (the npm `cron-explain` is unrelated).
+
 ## 0.1.0 — 2026-09-01
 
 Initial release.
