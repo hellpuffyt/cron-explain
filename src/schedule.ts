@@ -131,6 +131,13 @@ export function matches(cron: CronExpression, wall: WallClock): boolean {
   return domMatch || dowMatch;
 }
 
+/**
+ * Largest real-world UTC-offset change in one transition is 2h (historical
+ * double summer time, and some zones that changed standard offset); jumping
+ * this far short of the estimated end of day can never overshoot it.
+ */
+const DST_SAFETY_MINUTES = 180;
+
 export const DEFAULT_HORIZON_MINUTES = 4 * 366 * 24 * 60;
 
 export interface NextRunsResult {
@@ -182,8 +189,18 @@ export function nextRuns(
     const wall = wallClockAt(formatter, candidate);
 
     if (!dayQualifies(cron, wall)) {
+      // Never jump all the way to the computed midnight: on a spring-forward
+      // day the local day is shorter than 24h, so a full jump lands past the
+      // next midnight and silently skips the start of the next day (e.g.
+      // "30 0 * * MON" after a Sunday DST change missed Monday 00:30). Jump to
+      // DST_SAFETY_MINUTES before the estimated midnight, then finish with
+      // hour-sized steps, which re-read the wall clock at every boundary.
       const minutesLeftInDay = Math.max((24 - wall.hour) * 60 - wall.minute, 1);
-      const jump = Math.min(minutesLeftInDay, budget);
+      const safe =
+        minutesLeftInDay > DST_SAFETY_MINUTES
+          ? minutesLeftInDay - DST_SAFETY_MINUTES
+          : Math.max(60 - wall.minute, 1);
+      const jump = Math.min(safe, budget);
       candidate = new Date(candidate.getTime() + jump * 60000);
       budget -= jump;
       continue;
