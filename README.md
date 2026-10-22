@@ -7,15 +7,14 @@ wall clock said, rather than approximating the transition by hand. Zero
 runtime dependencies.
 
 ```console
-$ cron-explain "*/15 9-17 * * MON-FRI" --timezone America/New_York --count 3
-Every 15 minutes, starting at minute 0, during hour 09 through 17, on Monday
-through Friday.
+$ cron-explain "*/15 9-17 * * MON-FRI" --timezone America/New_York --from 2026-09-01T12:00:00Z --count 3
+every 15 minutes, every hour from 09 through 17, Monday through Friday.
 
 timezone: America/New_York
 
-  Mon, Sep 01, 2026, 09:00  (2026-09-01T13:00:00.000Z)
-  Mon, Sep 01, 2026, 09:15  (2026-09-01T13:15:00.000Z)
-  Mon, Sep 01, 2026, 09:30  (2026-09-01T13:30:00.000Z)
+  Tue, Sep 01, 2026, 09:00  (2026-09-01T13:00:00.000Z)
+  Tue, Sep 01, 2026, 09:15  (2026-09-01T13:15:00.000Z)
+  Tue, Sep 01, 2026, 09:30  (2026-09-01T13:30:00.000Z)
 ```
 
 ## Why DST correctness is the actual point
