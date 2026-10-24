@@ -101,6 +101,12 @@ describe("explain: common patterns", () => {
     expect(text).toContain("every hour from 09 through 17");
   });
 
+  it("minute and hour steps keep their non-zero start in the plain clauses", () => {
+    expect(explain(parseCron("5/10 9-17 * * *"))).toContain("every 10 minutes from minute 5, every hour from 09 through 17");
+    expect(explain(parseCron("7 2/3 * * *"))).toContain("at minute 7, every 3 hours from hour 2");
+    expect(explain(parseCron("* */2 * * *"))).toContain("every minute, every 2 hours");
+  });
+
   it("an hour list falls back to two plain clauses", () => {
     const text = explain(parseCron("0 9,14,20 * * *"));
     expect(text).toContain("during hours 09, 14, and 20");
