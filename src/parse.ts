@@ -16,15 +16,21 @@
 import { CronExplainError } from "./errors.js";
 import type { FieldSpec } from "./fields.js";
 
-function parseValue(token: string, spec: FieldSpec): number {
+function parseValue(token: string, spec: FieldSpec, keepSeven = false): number {
   const lower = token.toLowerCase();
-  if (lower in spec.names) return spec.names[lower] as number;
+  // Own keys only: `in` matched "constructor"/"toString" from Object.prototype.
+  if (Object.hasOwn(spec.names, lower)) {
+    const named = spec.names[lower] as number;
+    // "MON-SUN": Sunday as a range's upper bound is 7, not 0.
+    return keepSeven && spec.name === "dayOfWeek" && named === 0 ? 7 : named;
+  }
   if (!/^\d+$/.test(token)) {
     throw new CronExplainError(`${spec.name}: "${token}" is not a valid value`);
   }
   let n = Number(token);
   // POSIX cron: both 0 and 7 mean Sunday in the day-of-week field.
-  if (spec.name === "dayOfWeek" && n === 7) n = 0;
+  // (Kept as 7 for a range's upper bound, so "1-7" means Monday-Sunday.)
+  if (spec.name === "dayOfWeek" && n === 7 && !keepSeven) n = 0;
   if (n < spec.min || n > spec.max) {
     throw new CronExplainError(
       `${spec.name}: ${token} is out of range (${spec.min}-${spec.max})`,
@@ -60,7 +66,7 @@ function parseStep(text: string, spec: FieldSpec): number[] {
     }
     const [fromText, toText] = rangeParts as [string, string];
     low = parseValue(fromText, spec);
-    high = parseValue(toText, spec);
+    high = parseValue(toText, spec, true);
     if (low > high) {
       throw new CronExplainError(
         `${spec.name}: range "${base}" starts after it ends (wrap-around ranges are not supported)`,
@@ -74,7 +80,9 @@ function parseStep(text: string, spec: FieldSpec): number[] {
   }
 
   const values: number[] = [];
-  for (let v = low; v <= high; v += step) values.push(v);
+  for (let v = low; v <= high; v += step) {
+    values.push(spec.name === "dayOfWeek" && v === 7 ? 0 : v);
+  }
   return values;
 }
 
