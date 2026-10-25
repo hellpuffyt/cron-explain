@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="440" viewBox="0 0 1200 440" role="img" aria-labelledby="t d">
+  <title id="t">cron-explain data flow</title>
+  <desc id="d">An expression and options are parsed by cli.ts parseArgs, turned into a CronExpression by parseCron using parseField and the field specs, explained in prose by explain.ts, and searched by nextRuns, which steps through real UTC instants and asks Intl.DateTimeFormat for the wall clock in the target timezone. buildReport combines both and renderText or renderJson prints the result. A differential test compares nextRuns with an exhaustive minute-by-minute scan.</desc>
+  <rect width="1200" height="440" fill="#0C0D0D"/>
+  <g font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" fill="#A3AAA6" font-size="13">
+    <text x="40" y="44" fill="#EEEAE2" font-size="20" font-weight="600">cron-explain: from expression to DST-correct runs</text>
+    <text x="40" y="68">Pipeline modules live in src/. No runtime dependencies; timezone data comes from the system IANA database via Intl.</text>
+  </g>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#A3AAA6"/></marker>
+    <marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#3FBF8A"/></marker>
+  </defs>
+  <g fill="#17191A" stroke="#2A2E2D" stroke-width="1.5">
+    <rect x="40" y="110" width="190" height="110" rx="8"/>
+    <rect x="270" y="110" width="200" height="110" rx="8"/>
+    <rect x="510" y="96" width="250" height="56" rx="8"/>
+    <rect x="510" y="176" width="250" height="150" rx="8" stroke="#3FBF8A"/>
+    <rect x="800" y="110" width="170" height="110" rx="8"/>
+    <rect x="1000" y="110" width="160" height="110" rx="8"/>
+    <rect x="510" y="356" width="650" height="52" rx="8" stroke-dasharray="5 4"/>
+  </g>
+  <g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="14" fill="#EEEAE2">
+    <text x="56" y="138">argv</text>
+    <text x="286" y="138">parseCron</text>
+    <text x="526" y="122">explain()</text>
+    <text x="526" y="202" fill="#3FBF8A">nextRuns()</text>
+    <text x="816" y="138">buildReport</text>
+    <text x="1016" y="138">stdout</text>
+    <text x="526" y="380">test/reference.test.ts</text>
+  </g>
+  <g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="12" fill="#A3AAA6">
+    <text x="56" y="162">cli.ts parseArgs</text>
+    <text x="56" y="182">--timezone --count</text>
+    <text x="56" y="200">--from --format</text>
+    <text x="286" y="162">schedule.ts</text>
+    <text x="286" y="182">parse.ts parseField</text>
+    <text x="286" y="200">fields.ts specs</text>
+    <text x="526" y="140">explain.ts: prose sentence</text>
+    <text x="526" y="224">schedule.ts</text>
+    <text x="526" y="246">step real UTC minutes</text>
+    <text x="526" y="266">wallClockAt() via Intl</text>
+    <text x="526" y="286">matches() + DOM/DOW union rule</text>
+    <text x="526" y="306">skip non-matching days/hours</text>
+    <text x="816" y="162">report.ts</text>
+    <text x="816" y="182">renderText</text>
+    <text x="816" y="200">renderJson</text>
+    <text x="1016" y="162">exit 0: parsed</text>
+    <text x="1016" y="182">exit 1: usage or</text>
+    <text x="1016" y="200">parse error</text>
+    <text x="526" y="398">11 expressions x 13 DST windows vs exhaustive per-minute scan</text>
+  </g>
+  <g stroke="#A3AAA6" stroke-width="1.5" fill="none">
+    <path d="M230 165 H262" marker-end="url(#a)"/>
+    <path d="M470 150 C490 150 490 124 502 124" marker-end="url(#a)"/>
+    <path d="M470 180 C490 180 490 230 502 230" marker-end="url(#a)"/>
+    <path d="M760 124 C780 124 780 150 792 150" marker-end="url(#a)"/>
+    <path d="M760 230 C780 230 780 190 792 190" marker-end="url(#a)"/>
+    <path d="M970 165 H992" marker-end="url(#a)"/>
+  </g>
+  <path d="M635 352 V334" stroke="#3FBF8A" stroke-width="1.5" fill="none" marker-end="url(#g)"/>
+  <g font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#A3AAA6">
+    <text x="40" y="262">Spring forward: a skipped wall time</text>
+    <text x="40" y="280">is never the reading of a real instant,</text>
+    <text x="40" y="298">so it never matches.</text>
+    <text x="270" y="262">Fall back: a repeated wall time is</text>
+    <text x="270" y="280">read by two real instants, so both</text>
+    <text x="270" y="298">are returned as separate runs.</text>
+    <text x="800" y="262">Horizon: about 4 years of minutes.</text>
+    <text x="800" y="280">Running out is reported as truncated</text>
+    <text x="800" y="298">(exit 0), not as a failure.</text>
+  </g>
+</svg>

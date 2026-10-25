@@ -6,6 +6,11 @@ search works in real instants and only ever asks a timezone what its own
 wall clock said, rather than approximating the transition by hand. Zero
 runtime dependencies.
 
+<img src="docs/assets/overview.svg" width="100%" alt="Data flow diagram: argv is parsed by cli.ts parseArgs, parseCron builds a CronExpression, explain() writes the prose and nextRuns() steps real UTC minutes reading the wall clock through Intl, then report.ts renders text or JSON; test/reference.test.ts checks nextRuns against an exhaustive scan.">
+
+**Status:** v0.1.0, CLI and library working and tested (121 tests, CI on
+Linux, macOS and Windows with Node 20, 22 and 24). Not published to npm.
+
 ```console
 $ cron-explain "*/15 9-17 * * MON-FRI" --timezone America/New_York --from 2026-09-01T12:00:00Z --count 3
 every 15 minutes, every hour from 09 through 17, Monday through Friday.
@@ -33,6 +38,12 @@ gets both DST edges right *by construction*, not by a special case:
   two different instants): both instants format to that same wall-clock
   reading, so both are found and returned as two separate runs — matching
   what actually happens on the clock, not hiding the repeat.
+
+## Requirements
+
+- Node.js 20 or newer (`engines.node` is `>=20`).
+- Timezone data comes from the IANA database built into your Node/ICU
+  build, so results for a zone are only as current as that data.
 
 ## Install
 
@@ -81,10 +92,53 @@ cron-explain "0 9 * * MON-FRI" --from 2027-01-01T00:00:00Z --format json
 ```
 
 `--count` defaults to 5, `--timezone` defaults to `UTC`, `--from` defaults
-to now. Exit code is always `0` on a successful parse — a truncated result
-(the search horizon ran out before finding `--count` runs, which can
-happen for a genuinely rare or self-contradictory schedule like day 31 in
-February) is an honest fact about the expression, not a tool failure.
+to now. Runs are always strictly after `--from`. Run `cron-explain --help`
+for the full option list and `--version` for the version.
+
+Exit codes: `0` on a successful parse, `1` on a usage error, an invalid
+expression or an unknown timezone (the message goes to stderr). A truncated
+result is still `0`: the search horizon (about four years of minutes) ran
+out before finding `--count` runs, which can happen for a genuinely rare or
+self-contradictory schedule like day 31 in February. That is an honest fact
+about the expression, not a tool failure:
+
+```console
+$ cron-explain "0 0 31 2 *" --count 2
+At 00:00, on the 31st, in February.
+
+timezone: UTC
+
+no matching run found within the search horizon
+```
+
+`--format json` prints `expression`, `explanation`, `timeZone`, `runs`
+(ISO-8601 UTC instants) and `truncated`. The fall-back case, where 01:30
+happens twice, returns both real instants:
+
+```console
+$ cron-explain "30 1 1 11 *" --timezone America/New_York --from 2026-10-31T00:00:00Z --count 2
+At 01:30, on the 1st, in November.
+
+timezone: America/New_York
+
+  Sun, Nov 01, 2026, 01:30  (2026-11-01T05:30:00.000Z)
+  Sun, Nov 01, 2026, 01:30  (2026-11-01T06:30:00.000Z)
+```
+
+## Library use
+
+The built package (`dist/`, from `npm run build`) exports the same pieces
+the CLI uses, from `src/index.ts`: `parseCron`, `explain`, `nextRuns`,
+`buildReport`, `renderText`, `renderJson`, `matches`, `wallClockAt`,
+`createFormatter`, the field specs, and `CronExplainError`.
+
+```ts
+import { explain, nextRuns, parseCron } from "cron-explain";
+
+const cron = parseCron("0 9 * * MON-FRI");
+explain(cron); // "At 09:00, Monday through Friday."
+nextRuns(cron, new Date(), "Europe/London", 3); // { runs: Date[], truncated: boolean }
+```
 
 ## Security
 
@@ -102,4 +156,9 @@ npm run lint
 npm run build
 ```
 
-MIT licensed.
+`npm run coverage` runs the tests with V8 coverage, as CI does. See
+[CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
+
+## License
+
+MIT, see [LICENSE](LICENSE).
